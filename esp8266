@@ -1,0 +1,147 @@
+/*
+ Name:		InteliFreq.ino
+ Created:	1/20/2018 14:12:54
+ Author:	chris
+*/
+
+
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <Servo.h>
+
+
+
+int freq_input = 8;
+
+int a_m_switcher = 9;
+int a_m_switcherValue;
+
+int motor_UP_pin = 4;
+int motor_UP_pinValue;
+
+int motor_DOWN_pin = 2;
+int motor_DOWN_pinValue;
+
+unsigned long high_t;
+unsigned long low_t;
+float t_period;
+float frequency;
+
+char array1[] = "FREQ:";
+char array2[] = "Hz";
+char array3[] = "CTRL:M";
+char array4[] = "CTRL:A";
+char array5[] = "MOTOR: ";
+int timeD = 1000;
+
+Servo servoMotor;
+
+
+LiquidCrystal_I2C lcd(0x3F, 16, 2);
+
+
+void setup() {
+
+	
+	pinMode(freq_input, INPUT);
+	pinMode(a_m_switcher, INPUT_PULLUP);
+	pinMode(motor_UP_pin, INPUT_PULLUP);
+	pinMode(motor_DOWN_pin, INPUT_PULLUP);
+
+	lcd.init();
+	lcd.backlight();
+
+	servoMotor.attach(7);
+
+	digitalWrite(a_m_switcher, HIGH);
+	digitalWrite(motor_UP_pin, HIGH);
+	digitalWrite(motor_DOWN_pin, HIGH);
+	
+}
+
+
+void loop() {
+	
+	high_t = pulseIn(freq_input, HIGH);
+	low_t =  pulseIn(freq_input, LOW);
+
+	t_period = (high_t) + (low_t + (low_t * 0.0101));
+	t_period = t_period / 1000;
+
+	frequency = 1000 / t_period;
+
+	Serial.println(frequency, 3);
+
+	if (frequency < 49 || frequency > 51) {
+		lcd.clear();
+		lcd.setCursor(0, 0);
+		lcd.print("ERROR ");
+		lcd.setCursor(7, 0);
+		lcd.print("FREQ:");
+		lcd.setCursor(12, 0);
+		lcd.print(frequency);
+	}
+	else
+	{
+		lcd.clear();
+		checkFunction();
+		lcd.setCursor(0, 0);
+		lcd.print(array1);
+		lcd.setCursor(6, 0);
+		lcd.print(frequency, 3);
+		lcd.setCursor(13, 0);
+		lcd.print(array2);
+		lcd.setCursor(8, 1);
+		lcd.print(array5);
+		checkMotorDirection();
+	}
+	
+	debugMode();
+	
+	delay(timeD);
+	
+}
+
+void checkFunction() {
+
+	a_m_switcherValue = digitalRead(a_m_switcher);
+	if (a_m_switcherValue == 1) {
+		lcd.setCursor(0, 1);
+		lcd.print(array3);
+	}
+	else {
+		lcd.setCursor(0, 1);
+		lcd.print(array4);
+	}
+}
+
+void checkMotorDirection() {
+
+	motor_UP_pinValue = digitalRead(motor_UP_pin);
+	motor_DOWN_pinValue = digitalRead(motor_DOWN_pin);
+
+	if (motor_UP_pinValue == 0) {
+		servoMotor.write(108);
+		lcd.setCursor(14, 1);
+		lcd.print("+");
+	}
+	else if (motor_DOWN_pinValue == 0) {
+		servoMotor.write(72);
+		lcd.setCursor(14, 1);
+		lcd.print("-");
+	}
+	else {
+		servoMotor.write(90);
+		lcd.setCursor(14, 1);
+		lcd.print("|");
+	}
+}
+
+	void debugMode() {
+		Serial.println(high_t);
+		Serial.println(low_t);
+		Serial.println(a_m_switcherValue);
+		Serial.println(digitalRead(motor_UP_pin));
+		Serial.println(digitalRead(motor_DOWN_pin));
+	}
+
